@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatGPT Question Extractor</title>
+    
+    <!-- Tailwind CSS for rapid UI development -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts for typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- =================================================================
+         INTERNAL CSS STYLES
+    ================================================================== -->
+    <style>
+        /* Set the default font for the entire page */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* --- Custom Scrollbar --- */
+        /* Styles the scrollbar for a more integrated look */
+        textarea::-webkit-scrollbar, #output-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track, #output-container::-webkit-scrollbar-track {
+            background: #1a202c; /* Matches the dark background */
+        }
+        textarea::-webkit-scrollbar-thumb, #output-container::-webkit-scrollbar-thumb {
+            background-color: #4a5568; /* A lighter gray for contrast */
+            border-radius: 20px;
+            border: 3px solid #1a202c;
+        }
+
+        /* --- Timeline Connector Styles --- */
+        /* The container for the question tiles, acting as the timeline */
+        #questions-list {
+            position: relative;
+            padding-left: 2.5rem; /* Make space for the line and numbers */
+        }
+        
+        /* The main vertical line running down the list */
+        #questions-list::before {
+            content: '';
+            position: absolute;
+            left: 12px; /* Aligns with the center of the number dots */
+            top: 1rem;
+            bottom: 1rem;
+            width: 2px;
+            /* A "shiny" gradient gives the line a nice visual effect */
+            background: linear-gradient(to bottom, rgba(55, 65, 81, 0), rgba(167, 139, 250, 0.6), rgba(55, 65, 81, 0));
+            z-index: 1;
+        }
+
+        /* --- Question Tile Styles --- */
+        .question-tile {
+            position: relative;
+            margin-bottom: 1rem;
+            transition: all 0.2s ease-in-out; /* Smooth transition for hover effects */
+            cursor: pointer;
+        }
+        
+        /* Elevate the tile on hover for a dynamic feel */
+        .question-tile:hover {
+            transform: translateY(-4px) scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* The numbered dot that sits on the timeline */
+        .number-dot {
+            position: absolute;
+            left: -2.5rem;
+            top: 0.5rem;
+            width: 1.5rem;
+            height: 1.5rem;
+            background-color: #4f46e5; /* Indigo-600 */
+            border: 2px solid #a78bfa; /* Violet-400 */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: bold;
+            color: #e0e7ff; /* Indigo-100 */
+            z-index: 10; /* Ensures the dot is above the timeline */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- =================================================================
+         HTML STRUCTURE
+    ================================================================== -->
+    <main class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 space-y-6">
+        
+        <!-- Header Section -->
+        <div class="text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-white">ChatGPT Question Extractor</h1>
+            <p class="text-gray-400 mt-2">Paste your conversation below to get a list of your questions.</p>
+        </div>
+
+        <!-- Output Section -->
+        <div class="space-y-4">
+            <h2 class="text-2xl font-semibold text-white">Extracted Questions:</h2>
+            <div id="output-container" class="bg-gray-900 p-4 rounded-lg border border-gray-700 max-h-[500px] overflow-y-auto">
+                <div id="questions-list">
+                    <!-- Placeholder text shown on initial load -->
+                    <p class="text-gray-500 italic">Your extracted questions will appear here...</p>
+                </div>
+            </div>
+             <div class="text-center">
+                <button id="copy-btn" class="hidden bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transform hover:scale-105 transition-all duration-200 ease-in-out">
+                    Copy All Questions
+                </button>
+                <p id="copy-feedback" class="text-green-400 text-sm mt-2 h-4"></p>
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="relative">
+            <label for="chat-input" class="block text-sm font-medium text-gray-300 mb-2">Conversation Text:</label>
+            <textarea id="chat-input" rows="4" class="w-full p-4 pr-32 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 resize-y" placeholder="Paste your conversation here..."></textarea>
+            <!-- Floating Action Button -->
+            <button id="extract-btn" class="absolute bottom-3 right-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200 ease-in-out z-10">
+                Extract
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer Section -->
+    <footer class="text-center py-4">
+        <p class="text-xs text-gray-500">Made by Mahadevu Sudheer with Gemini</p>
+    </footer>
+
+    <!-- =================================================================
+         JAVASCRIPT LOGIC
+    ================================================================== -->
+    <script>
+        // Wait for the entire HTML document to be loaded and parsed before running the script.
+        // This prevents errors from trying to access elements that don't exist yet.
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- 1. DOM Element Selection ---
+            // Get references to all the interactive elements on the page.
+            const extractBtn = document.getElementById('extract-btn');
+            const chatInput = document.getElementById('chat-input');
+            const questionsList = document.getElementById('questions-list');
+            const copyBtn = document.getElementById('copy-btn');
+            const copyFeedback = document.getElementById('copy-feedback');
+            
+            // --- 2. State Management ---
+            // A variable to hold the results of the last extraction.
+            let extractedQuestions = [];
+
+            // --- 3. Core Functions ---
+
+            /**
+             * Parses the conversation text and extracts only the user's questions.
+             * It works by tracking whether it's currently inside a user question block.
+             * @returns {string[]} An array of question strings.
+             */
+            function parseQuestions() {
+                const inputText = chatInput.value;
+                if (!inputText.trim()) return [];
+
+                const lines = inputText.split('\n');
+                const questions = [];
+                let currentQuestionLines = [];
+                let isCapturing = true; // Start capturing immediately for the first question.
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim().toLowerCase();
+
+                    if (trimmedLine.startsWith('chatgpt said:')) {
+                        // When the AI speaks, save the previously captured question.
+                        if (isCapturing && currentQuestionLines.length > 0) {
+                            questions.push(currentQuestionLines.join('\n').trim());
+                        }
+                        currentQuestionLines = []; // Reset the buffer
+                        isCapturing = false;      // Stop capturing
+                    } else if (trimmedLine.startsWith('you said:')) {
+                        // When the user speaks, start capturing a new question.
+                        isCapturing = true;
+                        currentQuestionLines = []; // Reset the buffer
+                    } else {
+                        // If it's a continuation line, add it to the buffer.
+                        if (isCapturing) {
+                            currentQuestionLines.push(line);
+                        }
+                    }
+                }
+
+                // If the text ends while capturing a question, save the last one.
+                if (isCapturing && currentQuestionLines.length > 0) {
+                    questions.push(currentQuestionLines.join('\n').trim());
+                }
+
+                return questions.filter(q => q); // Return only non-empty questions.
+            }
+
+            /**
+             * Copies a single question's text to the clipboard.
+             * @param {string} text - The question text to copy.
+             */
+            function copySingleQuestion(text) {
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed"; // Prevent page from scrolling
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    copyFeedback.textContent = 'Question copied!';
+                    setTimeout(() => { copyFeedback.textContent = '' }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy question', err);
+                    copyFeedback.textContent = 'Failed to copy.';
+                    setTimeout(() => { copyFeedback.textContent = '' }, 2000);
+                }
+                document.body.removeChild(textArea);
+            }
+
+            /**
+             * Renders the extracted questions into a list of styled tiles.
+             * @param {string[]} questions - An array of questions from parseQuestions().
+             */
+            function displayQuestions(questions) {
+                questionsList.innerHTML = ''; // Clear previous results
+                if (questions.length === 0) {
+                    questionsList.innerHTML = '<p class="text-gray-500 italic">No questions found. Check the format requirements.</p>';
+                    copyBtn.classList.add('hidden');
+                    return;
+                }
+
+                questions.forEach((question, index) => {
+                    const tile = document.createElement('div');
+                    tile.className = 'question-tile bg-gray-700 p-4 rounded-lg';
+                    tile.addEventListener('click', () => copySingleQuestion(question));
+
+                    const numberDot = document.createElement('div');
+                    numberDot.className = 'number-dot';
+                    numberDot.textContent = index + 1;
+                    
+                    const questionP = document.createElement('p');
+                    questionP.className = 'whitespace-pre-wrap text-gray-100';
+                    questionP.textContent = question;
+                    
+                    tile.appendChild(numberDot);
+                    tile.appendChild(questionP);
+                    questionsList.appendChild(tile);
+                });
+
+                copyBtn.classList.remove('hidden');
+            }
+
+            /**
+             * Copies all extracted questions to the user's clipboard.
+             */
+            function copyAllQuestions() {
+                const textToCopy = extractedQuestions.map((question, index) => {
+                    return `${index + 1}. ${question}`;
+                }).join('\n\n');
+
+                if (!textToCopy) return;
+
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    copyFeedback.textContent = 'All questions copied!';
+                    setTimeout(() => { copyFeedback.textContent = '' }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy to clipboard', err);
+                    copyFeedback.textContent = 'Failed to copy.';
+                    setTimeout(() => { copyFeedback.textContent = '' }, 2000);
+                }
+                document.body.removeChild(textArea);
+            }
+
+            // --- 4. Event Listeners ---
+            // Connect the functions to the buttons on the page.
+            extractBtn.addEventListener('click', () => {
+                extractedQuestions = parseQuestions();
+                displayQuestions(extractedQuestions);
+            });
+            
+            copyBtn.addEventListener('click', copyAllQuestions);
+        });
+    </script>
+</body>
+</html>
