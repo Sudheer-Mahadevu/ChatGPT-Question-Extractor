@@ -90,12 +90,14 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 flex flex-col items-center justify-center min-h-screen p-4">
+<!-- The body no longer centers a single card, but provides a canvas for the content -->
+<body class="bg-gray-900 text-gray-200">
 
     <!-- =================================================================
          HTML STRUCTURE
     ================================================================== -->
-    <main class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 space-y-6">
+    <!-- The main element's max-width is reduced from 4xl to 3xl to make it more compact on wide screens. -->
+    <main class="w-full max-w-3xl mx-auto px-4 py-8 space-y-8">
         
         <!-- Header Section -->
         <div class="text-center">
@@ -106,7 +108,7 @@
         <!-- Output Section -->
         <div class="space-y-4">
             <h2 class="text-2xl font-semibold text-white">Extracted Questions:</h2>
-            <div id="output-container" class="bg-gray-900 p-4 rounded-lg border border-gray-700 max-h-[500px] overflow-y-auto">
+            <div id="output-container" class="bg-gray-800 p-4 rounded-lg border border-gray-700 max-h-[500px] overflow-y-auto">
                 <div id="questions-list">
                     <!-- Placeholder text shown on initial load -->
                     <p class="text-gray-500 italic">Your extracted questions will appear here...</p>
@@ -123,7 +125,8 @@
         <!-- Input Section -->
         <div class="relative">
             <label for="chat-input" class="block text-sm font-medium text-gray-300 mb-2">Conversation Text:</label>
-            <textarea id="chat-input" rows="4" class="w-full p-4 pr-32 bg-gray-900 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 resize-y" placeholder="Paste your conversation here..."></textarea>
+            <!-- Changed rows from 4 to 2 to reduce the height to a minimum -->
+            <textarea id="chat-input" rows="2" class="w-full p-4 pr-24 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 resize-y" placeholder="Paste your conversation here..."></textarea>
             <!-- Floating Action Button -->
             <button id="extract-btn" class="absolute bottom-3 right-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-200 ease-in-out z-10">
                 Extract
